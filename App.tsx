@@ -101,7 +101,7 @@ const App: React.FC = () => {
         setRecordingTime(prev => { if (prev >= 8) { stopRecording(); return 8; } return prev + 1; });
       }, 1000);
     } catch (err: any) {
-      console.error("Error al iniciar grabación:", err);
+      console.error("DEBUG: Error al iniciar grabación de audio:", err);
       setError(err.message);
       setStatus(AnalysisStatus.ERROR);
     }
@@ -116,30 +116,53 @@ const App: React.FC = () => {
   };
 
   const analyzeAudio = async (blob: Blob) => {
-    // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
+    console.log("DEBUG: Iniciando flujo de análisis con Gemini API...");
+    
+    // Verificación de API Key para diagnóstico en logs de Vercel
+    if (!process.env.API_KEY) {
+      console.error("DEBUG ERROR: process.env.API_KEY está vacía o no definida. Verifica los secretos de Vercel.");
+      setError("Error de configuración: API Key no encontrada.");
+      setStatus(AnalysisStatus.ERROR);
+      return;
+    }
+
     try {
       const base64Audio = await blobToBase64(blob);
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
+      /**
+       * Nota para el usuario: Se utiliza 'gemini-3-flash-preview' ya que 'gemini-1.5-flash' 
+       * está marcada como obsoleta en las directrices actuales de desarrollo. 
+       * Este modelo es superior para el análisis multimodal de audio.
+       */
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: {
           parts: [
             { inlineData: { data: base64Audio, mimeType: mimeTypeRef.current || 'audio/webm' } },
-            { text: "Analiza esta muestra de audio musical. Responde estrictamente en formato JSON con los siguientes campos: genre (estilo principal), subgenre, bpm, key, mood, instruments (lista), aiPrompt (tags para generación musical)." }
+            { text: "Analiza esta muestra de audio musical. Responde estrictamente en formato JSON con los siguientes campos: genre (estilo principal), subgenre, bpm, key, mood, instruments (lista), aiPrompt (tags para generación musical en Suno)." }
           ]
         },
         config: { responseMimeType: "application/json" }
       });
       
-      if (!response.text) throw new Error("Respuesta vacía del modelo");
+      if (!response.text) {
+        console.error("DEBUG ERROR: Gemini devolvió una respuesta vacía.");
+        throw new Error("Respuesta nula del modelo");
+      }
       
+      console.log("DEBUG: Análisis recibido correctamente.");
       const result: AnalysisResult = JSON.parse(response.text);
       setScannedStyles(prev => [{ id: Math.random().toString(36).substr(2, 9), result, weight: 50 }, ...prev]);
       setStatus(AnalysisStatus.COMPLETED);
     } catch (err: any) {
-      console.error("Error en análisis de audio:", err);
-      setError("Fallo en el análisis sónico. Por favor, intenta de nuevo.");
+      console.error("DEBUG ERROR COMPLETO:", err);
+      if (err.status === 403 || err.status === 401) {
+        console.error("DEBUG ERROR: Problema de permisos o API Key inválida.");
+      } else if (err.status === 429) {
+        console.error("DEBUG ERROR: Cuota excedida (Rate Limit).");
+      }
+      setError(`Fallo en el análisis sónico: ${err.message || 'Error desconocido'}`);
       setStatus(AnalysisStatus.ERROR);
     }
   };
@@ -148,7 +171,6 @@ const App: React.FC = () => {
     if (scannedStyles.length === 0 && !manualStyleInput) return;
     setStatus(AnalysisStatus.REMIXING);
     try {
-      // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const stylesStr = scannedStyles.map(s => `${s.result.genre} (${s.result.aiPrompt})`).join(', ');
       const prompt = `Actúa como un experto en prompts de Suno AI. Genera una lista de etiquetas (estilos, instrumentos, vibras) separadas por comas.
@@ -159,12 +181,12 @@ const App: React.FC = () => {
         model: 'gemini-3-flash-preview', 
         contents: prompt 
       });
-      // Direct access to response.text as a property
+      
       setRemixResult(response.text?.trim()?.substring(0, 1000) || "");
       setStatus(AnalysisStatus.COMPLETED);
       if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
-      console.error("Error en remix:", err);
+      console.error("DEBUG ERROR en Remix:", err);
       setError("Error mezclando ADN musical.");
       setStatus(AnalysisStatus.ERROR);
     }
@@ -174,19 +196,18 @@ const App: React.FC = () => {
     if (!lyricIdea) return;
     setStatus(AnalysisStatus.GENERATING_LYRICS);
     try {
-      // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Escribe la letra de una canción. Idea: ${lyricIdea}. Voz: ${lyricVoice}. Idioma: ${lyricLang}. Estilo: ${lyricVibe}. REGLA: Sin títulos ni etiquetas de partes [Chorus], solo el texto puro lírico.`;
+      const prompt = `Escribe la letra de una canción completa. Idea: ${lyricIdea}. Voz: ${lyricVoice}. Idioma: ${lyricLang}. Estilo: ${lyricVibe}. REGLA: Sin títulos ni etiquetas de partes [Chorus], solo el texto puro lírico.`;
       const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: prompt 
       });
-      // Direct access to response.text as a property
+      
       setLyricsResult(response.text?.replace(/\[.*?\]|\(.*?\)/g, '').trim() || null);
       setStatus(AnalysisStatus.COMPLETED);
       if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
-      console.error("Error en letras:", err);
+      console.error("DEBUG ERROR en Letras:", err);
       setError("Error redactando versos.");
       setStatus(AnalysisStatus.ERROR);
     }
@@ -213,7 +234,7 @@ const App: React.FC = () => {
           </div>
           <div>
             <h1 className="block font-black text-xl text-indigo-950 tracking-tighter leading-none">MusiGlass</h1>
-            <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Studio Engine v2.1</span>
+            <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Studio Engine v2.5</span>
           </div>
         </div>
         <button onClick={() => setShowSettings(true)} className="w-11 h-11 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center text-indigo-950/30 shadow-sm border border-white active:scale-90 transition-all">

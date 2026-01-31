@@ -3,7 +3,6 @@ import { defineConfig, loadEnv } from 'vite';
 import process from 'node:process';
 
 export default defineConfig(({ mode }) => {
-  // Use node:process to fix type error on cwd()
   const env = loadEnv(mode, process.cwd(), '');
   return {
     base: './',
@@ -17,7 +16,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Mapeamos VITE_GEMINI_API_KEY a process.env.API_KEY para compatibilidad con el SDK GenAI
+      // Mapeamos VITE_GEMINI_API_KEY (preferida por el usuario) a process.env.API_KEY 
+      // para que el SDK de @google/genai la detecte automáticamente.
       'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || env.API_KEY),
     },
     server: {
