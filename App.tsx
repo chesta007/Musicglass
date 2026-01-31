@@ -4,12 +4,35 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, AnalysisStatus, AppMode, LyricForm, ScannedStyle } from './types';
 import { getAudioStream, blobToBase64, getSupportedMimeType } from './services/audioRecorder';
 
+const DECO_MESSAGES = [
+  "Reticulando splines...",
+  "Desmenuzando beats...",
+  "Midiendo ritmos siderales...",
+  "Afinando condensador de fluzo...",
+  "Calibrando sintes analógicos...",
+  "Buscando la quinta nota...",
+  "Aislando ruido interestelar...",
+  "Compilando rimas imposibles...",
+  "Calculando el swing del bombo...",
+  "Extrayendo el alma del bajo...",
+  "Limpiando polvo de vinilos...",
+  "Ajustando autotune cuántico...",
+  "Invocando espíritus rítmicos...",
+  "Traduciendo silencios...",
+  "Añadiendo 3% de magia pura...",
+  "Mezclando frecuencias prohibidas...",
+  "Sincronizando metrónomos...",
+  "Analizando transientes rebeldes..."
+];
+
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.MUSIC);
   const [status, setStatus] = useState<AnalysisStatus>(AnalysisStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [decoMsg, setDecoMsg] = useState("");
+  const [isPWA, setIsPWA] = useState(false);
 
   const [useProModel, setUseProModel] = useState(true);
   const [autoNavigate, setAutoNavigate] = useState(true);
@@ -28,6 +51,32 @@ const App: React.FC = () => {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const mimeTypeRef = useRef<string>('');
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsPWA(isStandalone);
+  }, []);
+
+  useEffect(() => {
+    let interval: number;
+    const isBusy = [
+      AnalysisStatus.RECORDING, 
+      AnalysisStatus.ANALYZING, 
+      AnalysisStatus.REMIXING, 
+      AnalysisStatus.GENERATING_LYRICS
+    ].includes(status);
+
+    if (isBusy) {
+      setDecoMsg(DECO_MESSAGES[Math.floor(Math.random() * DECO_MESSAGES.length)]);
+      interval = window.setInterval(() => {
+        setDecoMsg(DECO_MESSAGES[Math.floor(Math.random() * DECO_MESSAGES.length)]);
+      }, 2200);
+    } else {
+      setDecoMsg("");
+    }
+
+    return () => clearInterval(interval);
+  }, [status]);
 
   const startAnalysis = async () => {
     try {
@@ -95,7 +144,7 @@ const App: React.FC = () => {
       });
 
       const result: AnalysisResult = JSON.parse(response.text || '{}');
-      setScannedStyles(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), result, weight: 50 }]);
+      setScannedStyles(prev => [{ id: Math.random().toString(36).substr(2, 9), result, weight: 50 }, ...prev]);
       setStatus(AnalysisStatus.COMPLETED);
     } catch (err: any) {
       setError("Análisis fallido.");
@@ -110,7 +159,6 @@ const App: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const stylesStr = scannedStyles.map(s => `${s.result.genre} ${s.result.subgenre}`).join(', ');
       
-      // Prompt ultra-estricto para solo tags y <1000 chars
       const prompt = `Actúa como un motor de etiquetas de estilo para IA musical. 
       REGLAS CRÍTICAS: 
       1. Genera ÚNICAMENTE una lista de etiquetas, estilos e instrumentos musicales separados por comas.
@@ -127,7 +175,7 @@ const App: React.FC = () => {
       const result = response.text?.trim() || "";
       setRemixResult(result.substring(0, 1000));
       setStatus(AnalysisStatus.COMPLETED);
-      if (autoNavigate) setMode(AppMode.STUDIO);
+      if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
       setError("Error en remix.");
       setStatus(AnalysisStatus.ERROR);
@@ -149,7 +197,7 @@ const App: React.FC = () => {
       const clean = response.text?.replace(/\[.*?\]|\(.*?\)/g, '').trim();
       setLyricsResult(clean || null);
       setStatus(AnalysisStatus.COMPLETED);
-      if (autoNavigate) setMode(AppMode.STUDIO);
+      if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
       setError("Error en letra.");
       setStatus(AnalysisStatus.ERROR);
@@ -168,11 +216,21 @@ const App: React.FC = () => {
     alert(msg);
   };
 
+  const handleManualInstall = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (isIOS) {
+      alert("En iOS: Pulsa el botón de 'Compartir' (cuadrado con flecha) y selecciona 'Añadir a la pantalla de inicio'.");
+    } else {
+      // Intentar disparar el evento nativo si está disponible
+      window.dispatchEvent(new Event('beforeinstallprompt'));
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col p-4 items-center max-w-lg mx-auto pb-44 selection:bg-indigo-100">
+    <div className="min-h-screen flex flex-col p-4 items-center max-w-lg mx-auto pb-44 selection:bg-indigo-100 transition-all duration-700">
       <nav className="w-full flex justify-between items-center mb-6 pt-4 px-2">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-indigo-600 border border-white">
+          <div className="w-12 h-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-indigo-600 border border-white transition-transform duration-500 hover:rotate-12">
             <i className={`fas ${mode === AppMode.MUSIC ? 'fa-compact-disc animate-spin-slow' : mode === AppMode.LYRICS ? 'fa-pen-nib' : 'fa-rocket'}`}></i>
           </div>
           <div>
@@ -180,116 +238,144 @@ const App: React.FC = () => {
             <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Studio Engine</span>
           </div>
         </div>
-        <button onClick={() => setShowSettings(true)} className="w-11 h-11 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center text-indigo-950/30 shadow-sm border border-white">
+        <button onClick={() => setShowSettings(true)} className="w-11 h-11 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center text-indigo-950/30 shadow-sm border border-white active:scale-90 transition-all">
           <i className="fas fa-sliders-h text-lg"></i>
         </button>
       </nav>
 
       <div className="flex bg-white/30 backdrop-blur-3xl p-1.5 rounded-[2rem] border border-white/60 shadow-lg mb-8 w-full sticky top-4 z-50">
-        <button onClick={() => setMode(AppMode.MUSIC)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all text-[11px] font-black ${mode === AppMode.MUSIC ? 'bg-indigo-600 text-white shadow-xl' : 'text-indigo-300'}`}>ESTILOS</button>
-        <button onClick={() => setMode(AppMode.LYRICS)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all text-[11px] font-black ${mode === AppMode.LYRICS ? 'bg-indigo-600 text-white shadow-xl' : 'text-indigo-300'}`}>LETRAS</button>
-        <button onClick={() => setMode(AppMode.STUDIO)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all text-[11px] font-black ${mode === AppMode.STUDIO ? 'bg-indigo-600 text-white shadow-xl' : 'text-indigo-300'}`}>ESTUDIO</button>
+        <button onClick={() => setMode(AppMode.MUSIC)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all duration-500 text-[11px] font-black ${mode === AppMode.MUSIC ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'text-indigo-300'}`}>ESTILOS</button>
+        <button onClick={() => setMode(AppMode.LYRICS)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all duration-500 text-[11px] font-black ${mode === AppMode.LYRICS ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'text-indigo-300'}`}>LETRAS</button>
+        <button onClick={() => setMode(AppMode.STUDIO)} className={`flex-1 py-3.5 rounded-[1.5rem] transition-all duration-500 text-[11px] font-black ${mode === AppMode.STUDIO ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'text-indigo-300'}`}>ESTUDIO</button>
       </div>
 
       <main className="flex-1 w-full space-y-6">
         {mode === AppMode.MUSIC && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-left-6 duration-500">
+          <div className="space-y-6 animate-in fade-in slide-in-from-left-6 duration-700">
              <div className="flex flex-col items-center py-8 relative">
                 <button 
                   onClick={status === AnalysisStatus.RECORDING ? stopRecording : startAnalysis}
                   disabled={status === AnalysisStatus.ANALYZING}
-                  className={`w-48 h-48 rounded-full liquid-orb flex items-center justify-center text-white text-5xl active:scale-95 transition-all shadow-2xl z-10 ${status === AnalysisStatus.RECORDING ? 'recording-pulse' : ''}`}
+                  className={`w-48 h-48 rounded-full liquid-orb flex items-center justify-center text-white text-5xl active:scale-95 transition-all duration-500 shadow-2xl z-10 ${status === AnalysisStatus.RECORDING ? 'recording-pulse scale-110' : ''} ${status === AnalysisStatus.ANALYZING ? 'scale-90 opacity-80' : ''}`}
                 >
-                  <i className={`fas ${status === AnalysisStatus.RECORDING ? 'fa-square' : status === AnalysisStatus.ANALYZING ? 'fa-spinner fa-spin' : 'fa-microphone-lines'}`}></i>
+                  <i className={`fas ${status === AnalysisStatus.RECORDING ? 'fa-square' : status === AnalysisStatus.ANALYZING ? 'fa-spinner fa-spin' : 'fa-microphone-lines'} transition-all duration-300`}></i>
                 </button>
-                <div className="text-center mt-8">
-                  <h3 className="text-sm font-black text-indigo-950 uppercase">ADN Musical</h3>
-                  <p className="text-[10px] font-bold text-indigo-400 uppercase mt-1">
-                    {status === AnalysisStatus.RECORDING ? `Escuchando (${recordingTime}s)...` : "Pulsa para analizar estilo"}
-                  </p>
+                <div className="text-center mt-8 transition-opacity duration-500">
+                  <h3 className="text-sm font-black text-indigo-950 uppercase tracking-widest">ADN Musical</h3>
+                  <div className="h-6 flex flex-col justify-center">
+                    <p className={`text-[10px] font-bold uppercase transition-all duration-300 ${status === AnalysisStatus.RECORDING ? 'text-red-500' : 'text-indigo-400'}`}>
+                      {status === AnalysisStatus.RECORDING ? `Escuchando (${recordingTime}s)...` : status === AnalysisStatus.ANALYZING ? "Desifrando frecuencias..." : "Analiza estilos en vivo"}
+                    </p>
+                    {decoMsg && (
+                      <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mt-1 animate-in fade-in slide-in-from-bottom-2 duration-500 italic">
+                        {decoMsg}
+                      </p>
+                    )}
+                  </div>
                 </div>
              </div>
 
-             {scannedStyles.length > 0 && (
-               <div className="space-y-4 animate-in fade-in">
-                 {scannedStyles.map(s => (
-                   <div key={s.id} className="glass-panel p-6 rounded-[2.5rem] border-white shadow-xl">
-                     <div className="flex justify-between items-center mb-5">
-                        <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-[10px]"><i className="fas fa-compact-disc"></i></div>
-                           <h4 className="text-[11px] font-black text-indigo-950 uppercase">{s.result.genre}</h4>
-                        </div>
-                        <button onClick={() => setScannedStyles(scannedStyles.filter(x => x.id !== s.id))} className="text-red-200"><i className="fas fa-trash-alt"></i></button>
-                     </div>
-                     <input type="range" min="0" max="100" value={s.weight} onChange={(e) => setScannedStyles(scannedStyles.map(x => x.id === s.id ? {...x, weight: parseInt(e.target.value)} : x))} className="w-full h-2 bg-indigo-50 rounded-lg appearance-none accent-indigo-600" />
+             <div className="space-y-4">
+               {scannedStyles.map((s, idx) => (
+                 <div key={s.id} className={`glass-panel p-6 rounded-[2.5rem] border-white shadow-xl transition-all duration-500 animate-in zoom-in-95 slide-in-from-top-4`} style={{ animationDelay: `${idx * 100}ms` }}>
+                   <div className="flex justify-between items-center mb-5">
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-[10px]"><i className="fas fa-compact-disc"></i></div>
+                         <h4 className="text-[11px] font-black text-indigo-950 uppercase">{s.result.genre}</h4>
+                      </div>
+                      <button onClick={() => setScannedStyles(scannedStyles.filter(x => x.id !== s.id))} className="text-red-200 hover:text-red-400 transition-colors"><i className="fas fa-trash-alt"></i></button>
                    </div>
-                 ))}
-               </div>
-             )}
-
-             <div className="glass-panel p-6 rounded-[2.5rem] border-white shadow-xl">
-                <label className="text-[10px] font-black text-indigo-400 uppercase ml-1 mb-3 block tracking-widest">Manual Ideas</label>
-                <textarea value={manualStyleInput} onChange={(e) => setManualStyleInput(e.target.value)} placeholder="Ej: Funk retro, voces espaciales..." className="w-full bg-white/40 border-none p-5 text-xs font-bold h-24 placeholder:text-indigo-200 focus:ring-0" />
+                   <input type="range" min="0" max="100" value={s.weight} onChange={(e) => setScannedStyles(scannedStyles.map(x => x.id === s.id ? {...x, weight: parseInt(e.target.value)} : x))} className="w-full h-2 bg-indigo-50 rounded-lg appearance-none accent-indigo-600" />
+                 </div>
+               ))}
              </div>
 
-             <button onClick={remixStyles} disabled={status === AnalysisStatus.REMIXING || (scannedStyles.length === 0 && !manualStyleInput)} className="w-full py-6 bg-indigo-950 text-white rounded-[2.5rem] font-black text-xs uppercase shadow-2xl disabled:opacity-30 transition-all">
-                {status === AnalysisStatus.REMIXING ? <i className="fas fa-spinner fa-spin"></i> : "Generar Prompt de Estilo"}
-             </button>
+             <div className="glass-panel p-6 rounded-[2.5rem] border-white shadow-xl transition-all duration-500">
+                <label className="text-[10px] font-black text-indigo-400 uppercase ml-1 mb-3 block tracking-widest">Toque Personal</label>
+                <textarea value={manualStyleInput} onChange={(e) => setManualStyleInput(e.target.value)} placeholder="Ej: Funk retro, voces espaciales..." className="w-full bg-white/40 border-none p-5 text-xs font-bold h-24 placeholder:text-indigo-200 focus:ring-0 transition-all" />
+             </div>
+
+             <div className="flex flex-col gap-2">
+                <button onClick={remixStyles} disabled={status === AnalysisStatus.REMIXING || (scannedStyles.length === 0 && !manualStyleInput)} className="w-full py-6 bg-indigo-950 text-white rounded-[2.5rem] font-black text-xs uppercase shadow-2xl disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    {status === AnalysisStatus.REMIXING ? <i className="fas fa-spinner fa-spin"></i> : null}
+                    {status === AnalysisStatus.REMIXING ? "Mezclando ADN..." : "Generar Prompt de Estilo"}
+                </button>
+                {status === AnalysisStatus.REMIXING && decoMsg && (
+                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest text-center animate-pulse">{decoMsg}</p>
+                )}
+             </div>
           </div>
         )}
 
         {mode === AppMode.LYRICS && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-6 duration-500">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-6 duration-700">
             <div className="glass-panel p-8 rounded-[3rem] border-white shadow-2xl space-y-6">
-              <textarea value={lyricIdea} onChange={(e) => setLyricIdea(e.target.value)} placeholder="¿De qué habla tu canción?" className="w-full bg-white/50 border-white rounded-[2rem] p-6 text-xs font-bold h-44 shadow-inner placeholder:text-indigo-200 focus:ring-0" />
-              <div className="grid grid-cols-2 gap-4">
-                <select value={lyricVoice} onChange={(e) => setLyricVoice(e.target.value as any)} className="bg-white/80 border-white rounded-2xl p-4 text-[10px] font-black appearance-none"><option>Hombre</option><option>Mujer</option><option>Dúo</option></select>
-                <select value={lyricLang} onChange={(e) => setLyricLang(e.target.value)} className="bg-white/80 border-white rounded-2xl p-4 text-[10px] font-black appearance-none"><option>Español</option><option>Inglés</option></select>
+              <div className="relative">
+                <textarea value={lyricIdea} onChange={(e) => setLyricIdea(e.target.value)} placeholder="¿De qué habla tu canción?" className="w-full bg-white/50 border-white rounded-[2rem] p-6 text-xs font-bold h-44 shadow-inner placeholder:text-indigo-200 focus:ring-0 transition-all" />
+                <div className="absolute right-6 bottom-6 text-[8px] font-black text-indigo-200 uppercase tracking-widest pointer-events-none">Lyric Idea</div>
               </div>
-              <button onClick={generateLyrics} disabled={status === AnalysisStatus.GENERATING_LYRICS || !lyricIdea} className="w-full py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-xs uppercase shadow-2xl disabled:opacity-50">
-                {status === AnalysisStatus.GENERATING_LYRICS ? <i className="fas fa-circle-notch fa-spin"></i> : "Redactar Letra"}
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <select value={lyricVoice} onChange={(e) => setLyricVoice(e.target.value as any)} className="bg-white/80 border-white rounded-2xl p-4 text-[10px] font-black appearance-none focus:ring-0 cursor-pointer"><option>Hombre</option><option>Mujer</option><option>Dúo</option></select>
+                <select value={lyricLang} onChange={(e) => setLyricLang(e.target.value)} className="bg-white/80 border-white rounded-2xl p-4 text-[10px] font-black appearance-none focus:ring-0 cursor-pointer"><option>Español</option><option>Inglés</option></select>
+              </div>
+              <div className="space-y-3">
+                <button onClick={generateLyrics} disabled={status === AnalysisStatus.GENERATING_LYRICS || !lyricIdea} className="w-full py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-xs uppercase shadow-2xl disabled:opacity-50 active:scale-95 transition-all flex items-center justify-center gap-3">
+                    {status === AnalysisStatus.GENERATING_LYRICS ? <i className="fas fa-circle-notch fa-spin"></i> : null}
+                    {status === AnalysisStatus.GENERATING_LYRICS ? "Escribiendo Versos..." : "Redactar Letra"}
+                </button>
+                {status === AnalysisStatus.GENERATING_LYRICS && decoMsg && (
+                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest text-center animate-pulse">{decoMsg}</p>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         {mode === AppMode.STUDIO && (
-          <div className="space-y-8 animate-in zoom-in-95 duration-500">
+          <div className="space-y-8 animate-in zoom-in-95 duration-700">
             <div className="space-y-6">
-              <div className="glass-panel p-7 rounded-[3rem] border-white shadow-xl group">
+              <div className={`glass-panel p-7 rounded-[3rem] border-white shadow-xl transition-all duration-700 ${status === AnalysisStatus.REMIXING ? 'shimmer-effect' : ''}`}>
                 <div className="flex justify-between items-center mb-5">
-                   <span className="text-[10px] font-black text-indigo-950 uppercase tracking-widest">Estilo (Tags)</span>
-                   {remixResult && <button onClick={() => copyToClipboard(remixResult, "Prompt copiado")} className="text-indigo-400"><i className="fas fa-copy"></i></button>}
+                   <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                     <span className="text-[10px] font-black text-indigo-950 uppercase tracking-widest">Estilo (Tags)</span>
+                   </div>
+                   {remixResult && <button onClick={() => copyToClipboard(remixResult, "Prompt copiado")} className="text-indigo-400 hover:text-indigo-600 active:scale-90 transition-all"><i className="fas fa-copy"></i></button>}
                 </div>
                 {remixResult ? (
-                  <div className="bg-white/50 p-5 rounded-[2rem] text-[11px] font-bold text-indigo-900 leading-relaxed shadow-inner">"{remixResult}"</div>
+                  <div className="bg-white/50 p-5 rounded-[2rem] text-[11px] font-bold text-indigo-900 leading-relaxed shadow-inner animate-in fade-in zoom-in-95">"{remixResult}"</div>
                 ) : (
-                  <button onClick={() => setMode(AppMode.MUSIC)} className="w-full py-5 border-2 border-dashed border-indigo-100 rounded-[2.5rem] text-[10px] font-black text-indigo-300">Configurar ADN Musical</button>
+                  <button onClick={() => setMode(AppMode.MUSIC)} className="w-full py-5 border-2 border-dashed border-indigo-100 rounded-[2.5rem] text-[10px] font-black text-indigo-300 hover:bg-white/40 transition-all">Configurar ADN Musical</button>
                 )}
               </div>
 
-              <div className="glass-panel p-7 rounded-[3rem] border-white shadow-xl">
+              <div className={`glass-panel p-7 rounded-[3rem] border-white shadow-xl transition-all duration-700 ${status === AnalysisStatus.GENERATING_LYRICS ? 'shimmer-effect' : ''}`}>
                 <div className="flex justify-between items-center mb-5">
-                   <span className="text-[10px] font-black text-indigo-950 uppercase tracking-widest">Letra Pura</span>
-                   {lyricsResult && <button onClick={() => copyToClipboard(lyricsResult, "Letra copiada")} className="text-indigo-400"><i className="fas fa-copy"></i></button>}
+                   <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                     <span className="text-[10px] font-black text-indigo-950 uppercase tracking-widest">Letra Pura</span>
+                   </div>
+                   {lyricsResult && <button onClick={() => copyToClipboard(lyricsResult, "Letra copiada")} className="text-indigo-400 hover:text-indigo-600 active:scale-90 transition-all"><i className="fas fa-copy"></i></button>}
                 </div>
                 {lyricsResult ? (
-                  <div className="bg-white/50 p-6 rounded-[2rem] text-[11px] font-bold text-indigo-950 max-h-52 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner custom-scrollbar">{lyricsResult}</div>
+                  <div className="bg-white/50 p-6 rounded-[2rem] text-[11px] font-bold text-indigo-950 max-h-52 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner custom-scrollbar animate-in fade-in zoom-in-95">{lyricsResult}</div>
                 ) : (
-                  <button onClick={() => setMode(AppMode.LYRICS)} className="w-full py-5 border-2 border-dashed border-indigo-100 rounded-[2.5rem] text-[10px] font-black text-indigo-300">Redactar Letra</button>
+                  <button onClick={() => setMode(AppMode.LYRICS)} className="w-full py-5 border-2 border-dashed border-indigo-100 rounded-[2.5rem] text-[10px] font-black text-indigo-300 hover:bg-white/40 transition-all">Redactar Letra</button>
                 )}
               </div>
             </div>
 
-            <button 
-              onClick={exportToSuno}
-              disabled={!remixResult && !lyricsResult}
-              className="w-full py-9 bg-indigo-950 text-white rounded-[3.5rem] font-black text-xs shadow-3xl flex flex-col items-center gap-4 uppercase tracking-[0.2em] disabled:opacity-30"
-            >
-              <i className="fas fa-rocket text-2xl"></i>
-              Lanzar a Suno AI
-              <span className="text-[7px] opacity-40">Auto-Copiado de Estilo + Letra</span>
-            </button>
+            <div className="animate-in slide-in-from-bottom-8 duration-700 delay-300">
+              <button 
+                onClick={exportToSuno}
+                disabled={!remixResult && !lyricsResult}
+                className="w-full py-9 bg-indigo-950 text-white rounded-[3.5rem] font-black text-xs shadow-3xl flex flex-col items-center gap-4 uppercase tracking-[0.2em] disabled:opacity-30 active:scale-95 transition-all group"
+              >
+                <i className="fas fa-rocket text-2xl group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"></i>
+                Lanzar a Suno AI
+                <span className="text-[7px] opacity-40 font-bold">Auto-Copiado Inteligente</span>
+              </button>
+            </div>
           </div>
         )}
       </main>
@@ -297,52 +383,107 @@ const App: React.FC = () => {
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
            <div className="absolute inset-0 bg-indigo-950/40 backdrop-blur-2xl" onClick={() => setShowSettings(false)}></div>
-           <div className="glass-panel w-full max-w-sm p-9 rounded-[4rem] border-white shadow-3xl relative z-10">
-              <h2 className="text-xl font-black text-indigo-950 mb-10 tracking-tighter">Ajustes</h2>
+           <div className="glass-panel w-full max-w-sm p-9 rounded-[4rem] border-white shadow-3xl relative z-10 animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[90vh] custom-scrollbar">
+              <h2 className="text-xl font-black text-indigo-950 mb-10 tracking-tighter">Ajustes Studio</h2>
               <div className="space-y-8">
+                 {!isPWA && (
+                    <div className="p-6 bg-indigo-50 rounded-[2.5rem] border border-indigo-100">
+                        <p className="text-[10px] font-black text-indigo-950 uppercase tracking-widest mb-3">App Mobile</p>
+                        <p className="text-[9px] font-bold text-indigo-400 leading-tight mb-4">Instala MusiGlass para usarla como una app nativa desde tu pantalla de inicio.</p>
+                        <button onClick={handleManualInstall} className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                            Descargar App Web
+                        </button>
+                    </div>
+                 )}
+                 
                  <div className="flex items-center justify-between">
                     <div><p className="text-xs font-black text-indigo-900">Gemini Pro</p><p className="text-[9px] font-bold text-indigo-400 uppercase">Máxima creatividad</p></div>
-                    <button onClick={() => setUseProModel(!useProModel)} className={`w-14 h-7 rounded-full flex items-center px-1 transition-all ${useProModel ? 'bg-indigo-600' : 'bg-indigo-100'}`}>
-                       <div className={`w-5 h-5 bg-white rounded-full shadow-lg transform ${useProModel ? 'translate-x-7' : 'translate-x-0'}`}></div>
+                    <button onClick={() => setUseProModel(!useProModel)} className={`w-14 h-7 rounded-full flex items-center px-1 transition-all duration-300 ${useProModel ? 'bg-indigo-600' : 'bg-indigo-100'}`}>
+                       <div className={`w-5 h-5 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${useProModel ? 'translate-x-7' : 'translate-x-0'}`}></div>
                     </button>
                  </div>
-                 <button onClick={async () => { try { await getAudioStream(); alert("Micro OK"); } catch(e:any) { alert(e.message); } }} className="w-full py-5 border-2 border-indigo-100 text-indigo-600 rounded-[2rem] text-[10px] font-black uppercase">Test Micro</button>
-                 <button onClick={() => { if(confirm("¿Limpiar?")) { setScannedStyles([]); setLyricsResult(null); setRemixResult(null); setError(null); setShowSettings(false); } }} className="w-full py-5 border-2 border-red-50 text-red-500 rounded-[2rem] text-[10px] font-black uppercase">Reset Proyecto</button>
+                 <button onClick={async () => { try { await getAudioStream(); alert("Micro OK"); } catch(e:any) { alert(e.message); } }} className="w-full py-5 border-2 border-indigo-100 text-indigo-600 rounded-[2rem] text-[10px] font-black uppercase tracking-widest active:bg-indigo-50 transition-all">Test Micro</button>
+                 <button onClick={() => { if(confirm("¿Limpiar proyecto?")) { setScannedStyles([]); setLyricsResult(null); setRemixResult(null); setError(null); setShowSettings(false); } }} className="w-full py-5 border-2 border-red-50 text-red-500 rounded-[2rem] text-[10px] font-black uppercase tracking-widest active:bg-red-50 transition-all">Reset Studio</button>
               </div>
-              <button onClick={() => setShowSettings(false)} className="w-full mt-10 py-5 bg-indigo-950 text-white rounded-[2rem] font-black text-[10px] uppercase">Cerrar</button>
+              <button onClick={() => setShowSettings(false)} className="w-full mt-10 py-5 bg-indigo-950 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">Cerrar</button>
            </div>
         </div>
       )}
 
       {error && (
-          <div className="fixed inset-x-4 bottom-32 z-[200] glass-panel border-red-100 bg-white/95 p-6 rounded-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-10">
+          <div className="fixed inset-x-4 bottom-32 z-[200] glass-panel border-red-100 bg-white/95 p-6 rounded-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-10 duration-500">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-500 flex-shrink-0 animate-pulse"><i className="fas fa-lock text-xl"></i></div>
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-500 flex-shrink-0 animate-bounce"><i className="fas fa-lock text-xl"></i></div>
                 <div className="flex-1">
-                  <h4 className="text-[11px] font-black text-red-600 uppercase mb-1">Permiso Micro</h4>
+                  <h4 className="text-[11px] font-black text-red-600 uppercase mb-1">Acceso Requerido</h4>
                   <p className="text-[10px] font-bold text-indigo-900 leading-tight mb-4">{error}</p>
-                  <button onClick={startAnalysis} className="px-5 py-2.5 bg-indigo-600 text-white text-[9px] font-black rounded-full uppercase">Reintentar</button>
+                  <button onClick={startAnalysis} className="px-5 py-2.5 bg-indigo-600 text-white text-[9px] font-black rounded-full uppercase active:scale-95 transition-all">Reintentar</button>
                 </div>
-                <button onClick={() => setError(null)} className="text-indigo-200"><i className="fas fa-times"></i></button>
+                <button onClick={() => setError(null)} className="text-indigo-200 p-2"><i className="fas fa-times"></i></button>
               </div>
           </div>
       )}
 
-      <footer className="fixed bottom-8 text-center w-full max-w-lg left-1/2 -translate-x-1/2 pointer-events-none opacity-10">
-        <p className="text-[7px] font-black text-indigo-950 uppercase tracking-[1.5em]">MusiGlass Studio</p>
+      <footer className="fixed bottom-8 text-center w-full max-w-lg left-1/2 -translate-x-1/2 pointer-events-none opacity-20 transition-opacity duration-1000">
+        <p className="text-[7px] font-black text-indigo-950 uppercase tracking-[1.5em] flex items-center justify-center gap-2">
+           MUSIGLASS <span className="w-1 h-1 bg-indigo-600 rounded-full"></span> PRO ENGINE
+        </p>
       </footer>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; display: block; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.1); border-radius: 10px; }
+        
         @keyframes orb-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
             70% { box-shadow: 0 0 0 45px rgba(99, 102, 241, 0), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
             100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
         }
-        .recording-pulse { animation: orb-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .recording-pulse { animation: orb-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .animate-spin-slow { animation: spin 12s linear infinite; }
+        
+        @keyframes spin { 
+            from { transform: rotate(0deg); } 
+            to { transform: rotate(360deg); } 
+        }
+
+        .shimmer-effect {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shimmer-effect::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translate(-100%, -100%) rotate(30deg); }
+            100% { transform: translate(100%, 100%) rotate(30deg); }
+        }
+
+        .success-pop {
+            animation: successPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes successPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
       `}</style>
     </div>
   );

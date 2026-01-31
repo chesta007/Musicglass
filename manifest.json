@@ -1,18 +1,39 @@
 
 {
-  "name": "MusiCapture Glass Pro",
+  "name": "MusiGlass Pro Studio",
   "short_name": "MusiGlass",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
-  "description": "Analizador de música minimalista con Glassmorphism.",
   "theme_color": "#6366f1",
+  "description": "Estudio de producción musical IA portable. Captura beats y genera letras.",
   "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3844/3844724.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3844/3844724.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3844/3844724.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["multimedia", "music"],
+  "shortcuts": [
+    {
+      "name": "Analizar Música",
+      "url": "/?mode=MUSIC",
+      "description": "Abrir el analizador de beats"
     }
   ]
 }

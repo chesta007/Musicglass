@@ -6,9 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MusiGlass Pro Studio</title>
     <link rel="manifest" href="manifest.json">
+    
+    <!-- Etiquetas Meta para iOS (Apple) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MusiGlass">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3844/3844724.png">
+    
+    <!-- Etiquetas Meta para Android/Chrome -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#6366f1">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -72,6 +80,10 @@
             box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
             margin-top: -6px;
         }
+
+        /* Ocultar scrollbars */
+        ::-webkit-scrollbar { display: none; }
+        body { scrollbar-width: none; }
     </style>
 <script type="importmap">
 {
@@ -86,18 +98,21 @@
 </head>
 <body>
     <div id="root"></div>
+    
+    <!-- Banner de Instalación PWA (Android/Chrome) -->
     <div id="pwa-install" class="glass-panel p-6 rounded-[3rem] flex items-center justify-between border-white shadow-3xl">
         <div class="flex items-center gap-5">
             <div class="w-14 h-14 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl">
-                <i class="fas fa-plus text-xl"></i>
+                <i class="fas fa-arrow-down text-xl"></i>
             </div>
             <div class="text-sm">
-                <p class="font-black text-indigo-950">MusiGlass Studio</p>
-                <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">Añadir a Pantalla Inicio</p>
+                <p class="font-black text-indigo-950">MusiGlass Web App</p>
+                <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">Añadir al escritorio</p>
             </div>
         </div>
         <button id="install-btn" class="bg-indigo-950 text-white px-8 py-4 rounded-[1.8rem] text-[10px] font-black shadow-lg active:scale-95 transition-all uppercase tracking-widest">Instalar</button>
     </div>
+
     <script>
         const registerServiceWorker = async () => {
             if ('serviceWorker' in navigator) {
@@ -114,6 +129,7 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
+            // Solo mostrar si no está ya instalada
             if (!window.matchMedia('(display-mode: standalone)').matches) {
                 document.getElementById('pwa-install').style.display = 'flex';
             }
@@ -129,6 +145,11 @@
                 deferredPrompt = null;
             }
         });
+
+        // Detectar si ya es standalone para ocultar banners
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.getElementById('pwa-install').style.display = 'none';
+        }
     </script>
 </body>
 </html>
