@@ -1,7 +1,7 @@
 {
-  "name": "MusiCapture Glass",
+  "name": "MusiGlass Pro Studio",
   "short_name": "MusiGlass",
-  "description": "Captura y analiza música en tiempo real con IA. Genera prompts para Suno/Udio.",
+  "description": "Estudio portable para analizar beats y generar letras con IA.",
   "requestFramePermissions": [
     "microphone"
   ],

@@ -7,7 +7,6 @@ export interface AnalysisResult {
   mood: string;
   instruments: string[];
   aiPrompt: string;
-  description: string;
 }
 
 export interface ScannedStyle {
@@ -18,7 +17,6 @@ export interface ScannedStyle {
 
 export interface LyricForm {
   idea: string;
-  references: string[];
   voice: 'Hombre' | 'Mujer' | 'Dúo' | 'Coral';
   language: string;
   vibe: string;
