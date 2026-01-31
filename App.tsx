@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { AnalysisResult, AnalysisStatus, AppMode, LyricForm, ScannedStyle } from './types';
 import { getAudioStream, blobToBase64, getSupportedMimeType } from './services/audioRecorder';
 
@@ -37,12 +37,10 @@ const App: React.FC = () => {
   const [useProModel, setUseProModel] = useState(true);
   const [autoNavigate, setAutoNavigate] = useState(true);
 
-  // Estados de Música
   const [scannedStyles, setScannedStyles] = useState<ScannedStyle[]>([]);
   const [manualStyleInput, setManualStyleInput] = useState('');
   const [remixResult, setRemixResult] = useState<string | null>(null);
 
-  // Estados de Letras
   const [lyricIdea, setLyricIdea] = useState('');
   const [lyricVoice, setLyricVoice] = useState<LyricForm['voice']>('Hombre');
   const [lyricLang, setLyricLang] = useState('Español');
@@ -103,6 +101,7 @@ const App: React.FC = () => {
         setRecordingTime(prev => { if (prev >= 8) { stopRecording(); return 8; } return prev + 1; });
       }, 1000);
     } catch (err: any) {
+      console.error("Error al iniciar grabación:", err);
       setError(err.message);
       setStatus(AnalysisStatus.ERROR);
     }
@@ -117,24 +116,30 @@ const App: React.FC = () => {
   };
 
   const analyzeAudio = async (blob: Blob) => {
+    // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
     try {
       const base64Audio = await blobToBase64(blob);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
       const response = await ai.models.generateContent({
-        model: useProModel ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview',
-        contents: [{
+        model: 'gemini-3-flash-preview',
+        contents: {
           parts: [
             { inlineData: { data: base64Audio, mimeType: mimeTypeRef.current || 'audio/webm' } },
             { text: "Analiza esta muestra de audio musical. Responde estrictamente en formato JSON con los siguientes campos: genre (estilo principal), subgenre, bpm, key, mood, instruments (lista), aiPrompt (tags para generación musical)." }
           ]
-        }],
+        },
         config: { responseMimeType: "application/json" }
       });
-      const result: AnalysisResult = JSON.parse(response.text || '{}');
+      
+      if (!response.text) throw new Error("Respuesta vacía del modelo");
+      
+      const result: AnalysisResult = JSON.parse(response.text);
       setScannedStyles(prev => [{ id: Math.random().toString(36).substr(2, 9), result, weight: 50 }, ...prev]);
       setStatus(AnalysisStatus.COMPLETED);
     } catch (err: any) {
-      setError("Fallo en el análisis sónico.");
+      console.error("Error en análisis de audio:", err);
+      setError("Fallo en el análisis sónico. Por favor, intenta de nuevo.");
       setStatus(AnalysisStatus.ERROR);
     }
   };
@@ -143,17 +148,23 @@ const App: React.FC = () => {
     if (scannedStyles.length === 0 && !manualStyleInput) return;
     setStatus(AnalysisStatus.REMIXING);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const stylesStr = scannedStyles.map(s => `${s.result.genre} (${s.result.aiPrompt})`).join(', ');
       const prompt = `Actúa como un experto en prompts de Suno AI. Genera una lista de etiquetas (estilos, instrumentos, vibras) separadas por comas.
       REGLAS: Solo palabras clave, sin frases, máximo 1000 caracteres.
       Base de estilos: [${stylesStr}]. Instrucciones adicionales: ${manualStyleInput}.`;
       
-      const response = await ai.models.generateContent({ model: 'gemini-3-pro-preview', contents: prompt });
+      const response = await ai.models.generateContent({ 
+        model: 'gemini-3-flash-preview', 
+        contents: prompt 
+      });
+      // Direct access to response.text as a property
       setRemixResult(response.text?.trim()?.substring(0, 1000) || "");
       setStatus(AnalysisStatus.COMPLETED);
       if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
+      console.error("Error en remix:", err);
       setError("Error mezclando ADN musical.");
       setStatus(AnalysisStatus.ERROR);
     }
@@ -163,13 +174,19 @@ const App: React.FC = () => {
     if (!lyricIdea) return;
     setStatus(AnalysisStatus.GENERATING_LYRICS);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Correct initialization: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Escribe la letra de una canción. Idea: ${lyricIdea}. Voz: ${lyricVoice}. Idioma: ${lyricLang}. Estilo: ${lyricVibe}. REGLA: Sin títulos ni etiquetas de partes [Chorus], solo el texto puro lírico.`;
-      const response = await ai.models.generateContent({ model: 'gemini-3-pro-preview', contents: prompt });
+      const response = await ai.models.generateContent({ 
+        model: 'gemini-3-flash-preview', 
+        contents: prompt 
+      });
+      // Direct access to response.text as a property
       setLyricsResult(response.text?.replace(/\[.*?\]|\(.*?\)/g, '').trim() || null);
       setStatus(AnalysisStatus.COMPLETED);
       if (autoNavigate) setTimeout(() => setMode(AppMode.STUDIO), 600);
     } catch (err: any) {
+      console.error("Error en letras:", err);
       setError("Error redactando versos.");
       setStatus(AnalysisStatus.ERROR);
     }
@@ -196,7 +213,7 @@ const App: React.FC = () => {
           </div>
           <div>
             <h1 className="block font-black text-xl text-indigo-950 tracking-tighter leading-none">MusiGlass</h1>
-            <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Studio Engine v2.0</span>
+            <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Studio Engine v2.1</span>
           </div>
         </div>
         <button onClick={() => setShowSettings(true)} className="w-11 h-11 rounded-2xl bg-white/60 backdrop-blur-md flex items-center justify-center text-indigo-950/30 shadow-sm border border-white active:scale-90 transition-all">
@@ -325,12 +342,6 @@ const App: React.FC = () => {
            <div className="glass-panel w-full max-w-sm p-9 rounded-[4rem] border-white shadow-3xl relative z-10 animate-in zoom-in-95">
               <h2 className="text-xl font-black text-indigo-950 mb-10 tracking-tighter">Ajustes Studio</h2>
               <div className="space-y-8">
-                 <div className="flex items-center justify-between">
-                    <div><p className="text-xs font-black text-indigo-900">Gemini 3 Pro</p><p className="text-[9px] font-bold text-indigo-400 uppercase">Motor Principal</p></div>
-                    <button onClick={() => setUseProModel(!useProModel)} className={`w-14 h-7 rounded-full flex items-center px-1 transition-all duration-300 ${useProModel ? 'bg-indigo-600' : 'bg-indigo-100'}`}>
-                       <div className={`w-5 h-5 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${useProModel ? 'translate-x-7' : 'translate-x-0'}`}></div>
-                    </button>
-                 </div>
                  <button onClick={() => { if(confirm("¿Limpiar todo el proyecto?")) { window.location.reload(); } }} className="w-full py-5 border-2 border-red-50 text-red-500 rounded-[2rem] text-[10px] font-black uppercase tracking-widest">Reiniciar Sesión</button>
               </div>
               <button onClick={() => setShowSettings(false)} className="w-full mt-10 py-5 bg-indigo-950 text-white rounded-[2rem] font-black text-[10px] uppercase shadow-xl">Cerrar</button>
