@@ -10,6 +10,12 @@ export interface AnalysisResult {
   description: string;
 }
 
+export interface ScannedStyle {
+  id: string;
+  result: AnalysisResult;
+  weight: number;
+}
+
 export interface LyricForm {
   idea: string;
   references: string[];
@@ -20,7 +26,8 @@ export interface LyricForm {
 
 export enum AppMode {
   MUSIC = 'MUSIC',
-  LYRICS = 'LYRICS'
+  LYRICS = 'LYRICS',
+  STUDIO = 'STUDIO'
 }
 
 export enum AnalysisStatus {
@@ -29,5 +36,6 @@ export enum AnalysisStatus {
   ANALYZING = 'ANALYZING',
   COMPLETED = 'COMPLETED',
   ERROR = 'ERROR',
-  GENERATING_LYRICS = 'GENERATING_LYRICS'
+  GENERATING_LYRICS = 'GENERATING_LYRICS',
+  REMIXING = 'REMIXING'
 }
