@@ -4,23 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>MusiGlass Pro</title>
+    <title>MusiGlass Pro Studio</title>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#6366f1">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
         
         :root {
-            --glass-bg: rgba(255, 255, 255, 0.5);
-            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.9);
             --primary: #6366f1;
         }
 
         body {
-            background: radial-gradient(circle at 0% 0%, #f4f7ff, #ffffff);
+            background: radial-gradient(circle at 0% 0%, #f9faff, #ffffff);
             color: #0f172a;
             font-family: 'Plus Jakarta Sans', sans-serif;
             min-height: 100vh;
@@ -31,59 +32,45 @@
 
         .glass-panel {
             background: var(--glass-bg);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
+            backdrop-filter: blur(50px);
+            -webkit-backdrop-filter: blur(50px);
             border: 1px solid var(--glass-border);
-            box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.08);
+            box-shadow: 0 30px 60px -12px rgba(99, 102, 241, 0.1);
         }
 
         .liquid-orb {
             background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
             box-shadow: 
-                0 45px 90px -15px rgba(99, 102, 241, 0.4),
+                0 45px 90px -15px rgba(99, 102, 241, 0.35),
                 inset 0 -12px 24px rgba(0, 0, 0, 0.1),
-                inset 0 12px 24px rgba(255, 255, 255, 0.4);
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border: 8px solid #ffffff;
-        }
-
-        .liquid-orb:active {
-            transform: scale(0.8) translateY(8px);
-            box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.3);
-        }
-
-        .recording-pulse {
-            animation: orb-pulse 1.8s ease-in-out infinite;
-        }
-
-        @keyframes orb-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
-            70% { box-shadow: 0 0 0 40px rgba(99, 102, 241, 0), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
-            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0), 0 45px 90px -15px rgba(99, 102, 241, 0.4); }
-        }
-
-        .floating {
-            animation: float 4s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+                inset 0 12px 24px rgba(255, 255, 255, 0.3);
+            border: 6px solid #ffffff;
         }
 
         #pwa-install {
             display: none;
             position: fixed;
-            bottom: 30px;
+            bottom: 40px;
             left: 20px;
             right: 20px;
-            z-index: 1000;
+            z-index: 2000;
             animation: slideUp 0.8s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
         @keyframes slideUp {
             from { transform: translateY(150px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            border: 4px solid white;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            margin-top: -6px;
         }
     </style>
 <script type="importmap">
@@ -99,43 +86,37 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Install UI for APK feel -->
-    <div id="pwa-install" class="glass-panel p-6 rounded-[2.5rem] flex items-center justify-between border-white shadow-2xl">
+    <div id="pwa-install" class="glass-panel p-6 rounded-[3rem] flex items-center justify-between border-white shadow-3xl">
         <div class="flex items-center gap-5">
-            <div class="w-14 h-14 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl shadow-indigo-100">
-                <i class="fas fa-arrow-down text-xl"></i>
+            <div class="w-14 h-14 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl">
+                <i class="fas fa-plus text-xl"></i>
             </div>
             <div class="text-sm">
-                <p class="font-black text-indigo-950 tracking-tight">MusiGlass Pro</p>
-                <p class="text-indigo-900/40 text-[10px] font-bold uppercase tracking-widest">Instalar en Teléfono</p>
+                <p class="font-black text-indigo-950">MusiGlass Studio</p>
+                <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">Añadir a Pantalla Inicio</p>
             </div>
         </div>
-        <button id="install-btn" class="bg-indigo-600 text-white px-7 py-4 rounded-[1.5rem] text-[10px] font-black shadow-lg active:scale-95 transition-all uppercase tracking-widest">Añadir</button>
+        <button id="install-btn" class="bg-indigo-950 text-white px-8 py-4 rounded-[1.8rem] text-[10px] font-black shadow-lg active:scale-95 transition-all uppercase tracking-widest">Instalar</button>
     </div>
     <script>
-        // Fixed registration using simple relative path to avoid origin errors in sandboxed environments
         const registerServiceWorker = async () => {
             if ('serviceWorker' in navigator) {
                 try {
-                    // Using './sw.js' directly as it's the most compatible relative registration
                     await navigator.serviceWorker.register('./sw.js');
-                    console.log('Service Worker registrado');
                 } catch (error) {
-                    // Soft fail for preview environments where SW might be restricted
-                    console.debug('Service Worker skip:', error.message);
+                    console.debug('SW skip:', error.message);
                 }
             }
         };
-
         window.addEventListener('load', registerServiceWorker);
         
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Check if already installed
-            if (window.matchMedia('(display-mode: standalone)').matches) return;
-            document.getElementById('pwa-install').style.display = 'flex';
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                document.getElementById('pwa-install').style.display = 'flex';
+            }
         });
 
         document.getElementById('install-btn').addEventListener('click', async () => {
