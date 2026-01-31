@@ -1,0 +1,12 @@
+{
+  "name": "MusiCapture Glass",
+  "short_name": "MusiGlass",
+  "description": "Captura y analiza música en tiempo real con IA. Genera prompts para Suno/Udio.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1"
+}
